@@ -18,8 +18,8 @@
         <div class="col-md-3">
             <select id="collegeFilter" class="form-select">
                 <option value="">All Colleges</option>
-                @foreach(\App\Models\College::with('campus')->get() as $college)
-                    <option value="{{ $college->id }}">{{ $college->campus->name ?? 'N/A' }} - {{ $college->name }}</option>
+                @foreach(\App\Models\College::orderBy('name')->get() as $college)
+                    <option value="{{ $college->id }}">{{ $college->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -53,7 +53,7 @@
                         <th style="color:#333"><i class="fas fa-graduation-cap"></i> Program Name</th>
                         <th><i class="fas fa-tag"></i> Code</th>
                         <th><i class="fas fa-building"></i> College</th>
-                        <th><i class="fas fa-map-marker"></i> Campus</th>
+                        <!-- Campus removed for single-campus deployment -->
                         <th><i class="fas fa-desc"></i> Description</th>
                         <th style="text-align:center">Actions</th>
                     </tr>
@@ -65,7 +65,7 @@
                                 <td><strong>{{ $program->name }}</strong></td>
                                 <td><code>{{ $program->code }}</code></td>
                                 <td>{{ $program->college->name ?? 'N/A' }}</td>
-                                <td><span class="badge bg-secondary">{{ $program->college->campus->name ?? 'N/A' }}</span></td>
+                                <!-- Campus display removed; single-campus deployment -->
                                 <td>{{ Str::limit($program->description, 40) ?? 'N/A' }}</td>
                                 <td style="text-align:center;gap:5px;display:flex;justify-content:center">
                                     <a href="{{ route('programs.edit', $program) }}" class="btn btn-sm btn-warning">

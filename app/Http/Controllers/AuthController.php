@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
-use App\Models\Campus;
 use App\Models\College;
 use App\Models\Program;
 use App\Services\ActivityTracker;
@@ -22,11 +21,10 @@ class AuthController extends Controller
     public function showRegister()
     {
         $ranks = \App\Models\Rank::orderBy('name')->get();
-        $campuses = Campus::orderBy('name')->get();
         $colleges = College::orderBy('name')->get();
         $programs = Program::orderBy('name')->get();
 
-        return view('auth.register', compact('ranks','campuses','colleges','programs'));
+        return view('auth.register', compact('ranks','colleges','programs'));
     }
 
     public function login(Request $request)
@@ -54,10 +52,12 @@ class AuthController extends Controller
             'middleName' => 'nullable|string|max:255',
             'email' => 'required|email|unique:users',
             'password' => 'required|min:8|regex:/[A-Z]/|regex:/[a-z]/|regex:/[0-9]/|regex:/[!@#$%^&*]/|confirmed',
-            'role' => 'required|in:campus_director,dean,program_head,faculty',
+            'role' => 'required|in:campus_director,dean,program_head,faculty,student',
             'contactNumber' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'rank' => 'nullable|exists:ranks,name',
+            'college' => 'required|exists:colleges,name',
+            'program' => 'required|exists:programs,name',
         ];
 
         $request->validate($rules);
@@ -72,6 +72,9 @@ class AuthController extends Controller
             'contactNumber' => $request->contactNumber,
             'address' => $request->address,
             'rank' => $request->rank,
+            'campus' => $request->campus ?? 'ISPSC Tagudin',
+            'college' => $request->college ?? null,
+            'program' => $request->program ?? null,
         ]);
 
         Auth::login($user);
@@ -81,6 +84,9 @@ class AuthController extends Controller
             'email' => $request->email,
             'name' => $request->firstName . ' ' . $request->lastName,
             'role' => $request->role,
+            'campus' => $request->campus ?? 'ISPSC Tagudin',
+            'college' => $request->college ?? null,
+            'program' => $request->program ?? null,
         ]);
 
         return redirect()->route('dashboard');

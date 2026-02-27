@@ -48,27 +48,62 @@
             <small>ISPSC DMS</small>
         </div>
         @if(auth()->check())
+            @php $u = auth()->user(); @endphp
             <div style="padding:12px 18px;border-bottom:1px solid rgba(255,255,255,0.06);">
                 <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.95)">Account</div>
                 <div style="font-size:13px;margin-top:6px;opacity:0.95">
-                    <div><i class="fas fa-user-tag" style="width:14px"></i> {{ ucfirst(str_replace('_',' ', auth()->user()->role ?? '')) }}</div>
-                    <div style="margin-top:6px"><i class="fas fa-map-marker" style="width:14px"></i> {{ auth()->user()->campus ?? '—' }}</div>
-                    <div><i class="fas fa-building" style="width:14px"></i> {{ auth()->user()->college ?? '—' }}</div>
-                    <div><i class="fas fa-graduation-cap" style="width:14px"></i> {{ auth()->user()->program ?? '—' }}</div>
+                    <div><i class="fas fa-user-tag" style="width:14px"></i> {{ ucfirst(str_replace('_',' ', $u->role ?? '')) }}</div>
+                    <div style="margin-top:6px"><i class="fas fa-map-marker" style="width:14px"></i> ISPSC Tagudin</div>
+                    <div>
+                        <i class="fas fa-building" style="width:14px"></i>
+                        @if($u->college)
+                            {{ $u->college }}
+                        @else
+                            <a href="{{ route('profile.edit') }}" class="text-decoration-none" style="color:rgba(255,255,255,0.95)"><em>Set college</em></a>
+                        @endif
+                    </div>
+                    <div>
+                        <i class="fas fa-graduation-cap" style="width:14px"></i>
+                        @if($u->program)
+                            {{ $u->program }}
+                        @else
+                            <a href="{{ route('profile.edit') }}" class="text-decoration-none" style="color:rgba(255,255,255,0.95)"><em>Set program</em></a>
+                        @endif
+                    </div>
+                    <div style="margin-top:6px;font-size:12px;opacity:0.85"><i class="fas fa-envelope" style="width:14px"></i> {{ $u->email }}</div>
                 </div>
             </div>
         @endif
         <ul class="nav flex-column" style="list-style:none;padding:0;margin:0">
             <li><a href="{{ route('dashboard') }}" class="nav-link {{ Route::is('dashboard') ? 'active' : '' }}"><i class="fas fa-chart-line"></i> Dashboard</a></li>
             <li><a href="{{ route('documents.index') }}" class="nav-link {{ Route::is('documents.*') ? 'active' : '' }}"><i class="fas fa-file-pdf"></i> Documents</a></li>
+            <li><a href="{{ route('templates.index') }}" class="nav-link {{ Route::is('templates.*') ? 'active' : '' }}"><i class="fas fa-file-alt"></i> Templates</a></li>
+            @php
+                $showAssigned = false;
+                if (auth()->check()) {
+                    $u = auth()->user();
+                    if (in_array($u->role, ['faculty','dean','campus_director','program_head','superadmin'])) {
+                        $showAssigned = \App\Models\Document::whereHas('editors', function($q) use ($u) { $q->where('users.id', $u->id); })
+                            ->orWhereHas('commenters', function($q) use ($u) { $q->where('users.id', $u->id); })
+                            ->exists();
+                    }
+                }
+            @endphp
+            @if($showAssigned)
+                <li><a href="{{ route('documents.assigned') }}" class="nav-link {{ Route::is('documents.assigned') ? 'active' : '' }}"><i class="fas fa-clipboard-list"></i> Assigned To Me</a></li>
+            @endif
             <li><a href="{{ route('dashboard.users.visibility') }}" class="nav-link {{ Route::is('dashboard.users.visibility') ? 'active' : '' }}"><i class="fas fa-user-friends"></i> Faculty</a></li>
             @if(auth()->user() && auth()->user()->role === 'superadmin')
                 <li style="margin-top:15px;padding:8px 20px;opacity:0.6"><small><i class="fas fa-cog"></i> ADMIN</small></li>
                 <li><a href="{{ route('users.index') }}" class="nav-link {{ Route::is('users.*') ? 'active' : '' }}"><i class="fas fa-users"></i> Manage Users</a></li>
-                <li><a href="{{ route('campuses.index') }}" class="nav-link {{ Route::is('campuses.*') ? 'active' : '' }}"><i class="fas fa-map-marker"></i> Campuses</a></li>
+                <!-- Campuses removed for single-campus deployment -->
                 <li><a href="{{ route('colleges.index') }}" class="nav-link {{ Route::is('colleges.*') ? 'active' : '' }}"><i class="fas fa-building"></i> Colleges</a></li>
                 <li><a href="{{ route('programs.index') }}" class="nav-link {{ Route::is('programs.*') ? 'active' : '' }}"><i class="fas fa-graduation-cap"></i> Programs</a></li>
                 <li><a href="{{ route('settings.index') }}" class="nav-link {{ Route::is('settings.*') ? 'active' : '' }}"><i class="fas fa-sliders-h"></i> Settings</a></li>
+            @endif
+            @php $allowedManage = ['program_head','dean','campus_director','superadmin']; @endphp
+            @if(auth()->check() && in_array(auth()->user()->role, $allowedManage))
+                <li><a href="{{ route('templates.manage') }}" class="nav-link {{ Route::is('templates.manage') ? 'active' : '' }}"><i class="fas fa-file-signature"></i> Manage Templates</a></li>
             @endif
             <li><a href="{{ route('activity.index') }}" class="nav-link {{ Route::is('activity.*') ? 'active' : '' }}"><i class="fas fa-history"></i> Activity Logs</a></li>
         </ul>
@@ -84,19 +119,39 @@
             </div>
 
             <div class="dropdown">
-                <a class="dropdown-toggle text-decoration-none" href="#" role="button" id="profileMenu" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="fas fa-user-circle" style="font-size:24px;color:var(--maroon)"></i>
-                    <span style="margin-left:8px;color:#333">{{ auth()->user()->firstName }}</span>
-                </a>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileMenu">
-                    <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="fas fa-edit"></i> Edit Profile</a></li>
-                    <li>
-                        <form method="POST" action="{{ route('auth.logout') }}" class="m-0">
-                            @csrf
-                            <button class="dropdown-item" type="submit"><i class="fas fa-sign-out-alt"></i> Logout</button>
-                        </form>
-                    </li>
-                </ul>
+                <div class="d-flex align-items-center" style="gap:12px">
+                    {{-- Notifications bell --}}
+                    <div class="dropdown">
+                        <a href="#" class="text-decoration-none" id="notifMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bell" style="font-size:18px;color:var(--maroon)"></i>
+                            @if(auth()->user()->unreadNotifications->count() > 0)
+                                <span class="badge bg-danger" style="font-size:11px;margin-left:6px">{{ auth()->user()->unreadNotifications->count() }}</span>
+                            @endif
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notifMenu" style="width:320px">
+                            @foreach(auth()->user()->unreadNotifications->take(10) as $n)
+                                <li><a class="dropdown-item" href="{{ route('notifications.click', $n->id) }}">{{ $n->data['message'] ?? 'Notification' }} <br><small class="text-muted">{{ $n->created_at->diffForHumans() }}</small></a></li>
+                            @endforeach
+                            @if(auth()->user()->unreadNotifications->count() == 0)
+                                <li class="dropdown-item text-muted">No new notifications</li>
+                            @endif
+                        </ul>
+                    </div>
+
+                    <a class="dropdown-toggle text-decoration-none" href="#" role="button" id="profileMenu" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user-circle" style="font-size:24px;color:var(--maroon)"></i>
+                        <span style="margin-left:8px;color:#333">{{ auth()->user()->firstName }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileMenu">
+                        <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="fas fa-edit"></i> Edit Profile</a></li>
+                        <li>
+                            <form method="POST" action="{{ route('auth.logout') }}" class="m-0">
+                                @csrf
+                                <button class="dropdown-item" type="submit"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </header>
 

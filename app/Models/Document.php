@@ -23,8 +23,10 @@ use Illuminate\Database\Eloquent\Model;
 class Document extends Model
 {
     protected $fillable = [
-        'title', 'description', 'file_path', 'file_type', 'user_id', 'campus', 'college', 'program', 'status', 'document_type_id'
+        'title', 'description', 'file_path', 'file_type', 'user_id', 'college', 'program', 'status', 'document_type_id', 'template_id',
+        'format_font', 'line_spacing', 'margin_preset', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right', 'citation_style'
     ];
+
 
     public function user()
     {

@@ -25,6 +25,7 @@
             </div>
         </div>
     </div>
+    @include('dashboard._formatting_widget')
     <!-- Quick Actions (top) -->
     <div class="row mt-3 g-3 mb-3">
         <div class="col-md-3">

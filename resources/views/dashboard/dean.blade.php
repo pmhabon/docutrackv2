@@ -19,6 +19,7 @@
             </div>
         </div>
     </div>
+    @include('dashboard._formatting_widget')
     <!-- Quick Actions (moved to top) -->
     <div class="row mt-3 g-3">
         <div class="col-md-3">
@@ -106,7 +107,9 @@
                         <tbody>
                             @foreach(\App\Models\Document::with('commenters','type','user')->latest()->take(20)->get() as $d)
                                 @php
-                                    $rowStatus = $d->commenters->count() > 0 ? ($d->status === 'reviews_done' ? 'reviews_done' : 'pending') : $d->status;
+                                    $rowStatus = $d->commenters->count() > 0
+                                        ? ($d->status === 'reviews_done' ? 'reviews_done' : 'pending')
+                                        : 'no_reviewers_assigned';
                                     $typeClass = $d->document_type_id ? 'type-' . $d->document_type_id : 'type-none';
                                 @endphp
                                 <tr data-status="{{ $rowStatus }}" data-type="{{ $typeClass }}">
@@ -119,6 +122,8 @@
                                             <span class="badge bg-success">Approved</span>
                                         @elseif($rowStatus === 'rejected')
                                             <span class="badge bg-danger">Rejected</span>
+                                        @elseif($rowStatus === 'no_reviewers_assigned')
+                                            <span class="badge bg-info">No reviewers assigned</span>
                                         @else
                                             <span class="badge bg-warning">Pending</span>
                                         @endif

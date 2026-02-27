@@ -8,7 +8,6 @@ use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\UserManagementController;
 use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\CampusController;
 use App\Http\Controllers\CollegeController;
 use App\Http\Controllers\ProgramController;
 use App\Http\Controllers\DocumentTypeController;
@@ -51,7 +50,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/documents', [DocumentController::class, 'index'])->name('documents.index');
     Route::get('/documents/create', [DocumentController::class, 'create'])->name('documents.create');
     Route::post('/documents', [DocumentController::class, 'store'])->name('documents.store');
-    Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+    Route::get('/documents/{document}', [DocumentController::class, 'show'])->where('document','[0-9]+')->name('documents.show');
+    Route::get('/documents/{document}/formatting-status', [DocumentController::class, 'formattingStatus'])->name('documents.formatting_status');
     Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 
     // (editor assignment removed; commenter assignment remains)
@@ -60,10 +60,34 @@ Route::middleware('auth')->group(function () {
     Route::get('/documents/{document}/commenters', [DocumentController::class, 'commenters'])->name('documents.commenters');
     Route::post('/documents/{document}/commenters', [DocumentController::class, 'updateCommenters'])->name('documents.commenters.update');
 
+    // Editor assignment (uploader or superadmin)
+    Route::get('/documents/{document}/editors', [DocumentController::class, 'editors'])->name('documents.editors');
+    Route::post('/documents/{document}/editors', [DocumentController::class, 'updateEditors'])->name('documents.editors.update');
+
+    // Editor monitor
+    Route::get('/documents/editor-monitor', [DocumentController::class, 'editorMonitor'])->name('documents.editor_monitor');
+    // Assigned to me (editors or commenters)
+    Route::get('/documents/assigned', [DocumentController::class, 'assignedToMe'])->name('documents.assigned');
+
+    // Notifications
+    Route::get('/notifications/{id}/click', [\App\Http\Controllers\NotificationController::class, 'click'])->name('notifications.click');
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+    Route::post('/notifications/mark-all-read', [\App\Http\Controllers\NotificationController::class, 'markAllRead'])->name('notifications.mark_all_read');
+
     // Comments
     Route::post('/documents/{document}/comments', [DocumentController::class, 'storeComment'])->name('documents.comments.store');
     Route::get('/documents/{document}/preview', [DocumentController::class, 'preview'])->name('documents.preview');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+    // Backups: list and restore backups created during formatting
+    Route::get('/documents/{document}/backups', [DocumentController::class, 'backups'])->name('documents.backups');
+    Route::post('/documents/{document}/backups/restore', [DocumentController::class, 'restoreBackup'])->name('documents.backups.restore');
+
+    // Research template management and availability
+    Route::get('/templates', [\App\Http\Controllers\TemplateController::class, 'index'])->name('templates.index');
+    Route::get('/templates/manage', [\App\Http\Controllers\TemplateController::class, 'manage'])->name('templates.manage');
+    Route::post('/templates', [\App\Http\Controllers\TemplateController::class, 'store'])->name('templates.store');
+    Route::get('/templates/{template}/download', [\App\Http\Controllers\TemplateController::class, 'download'])->name('templates.download');
+    Route::delete('/templates/{template}', [\App\Http\Controllers\TemplateController::class, 'destroy'])->name('templates.destroy');
 
     // User Management (superadmin only)
     Route::middleware('role:superadmin')->group(function () {
@@ -80,13 +104,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
         Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
 
-        // Campus Management
-        Route::get('/campuses', [CampusController::class, 'index'])->name('campuses.index');
-        Route::get('/campuses/create', [CampusController::class, 'create'])->name('campuses.create');
-        Route::post('/campuses', [CampusController::class, 'store'])->name('campuses.store');
-        Route::get('/campuses/{campus}/edit', [CampusController::class, 'edit'])->name('campuses.edit');
-        Route::put('/campuses/{campus}', [CampusController::class, 'update'])->name('campuses.update');
-        Route::delete('/campuses/{campus}', [CampusController::class, 'destroy'])->name('campuses.destroy');
+        // Campus management removed for single-campus deployment
 
         // College Management
         Route::get('/colleges', [CollegeController::class, 'index'])->name('colleges.index');
@@ -104,6 +122,9 @@ Route::middleware('auth')->group(function () {
         Route::put('/programs/{program}', [ProgramController::class, 'update'])->name('programs.update');
         Route::delete('/programs/{program}', [ProgramController::class, 'destroy'])->name('programs.destroy');
 
+        // Formatting history (superadmin only)
+        Route::get('/admin/formatting-history', [DashboardController::class, 'formattingHistory'])->name('admin.formatting_history');
+
     // AJAX endpoints for dependent selects
     Route::get('/ajax/colleges', function (Illuminate\Http\Request $request) {
         $campusId = $request->query('campus_id');
@@ -116,6 +137,9 @@ Route::middleware('auth')->group(function () {
         $progs = \App\Models\Program::where('college_id', $collegeId)->orderBy('name')->get(['id','name']);
         return response()->json($progs);
     });
+
+    // AJAX: eligible commenters for a document (uploader or superadmin)
+    Route::get('/ajax/documents/{document}/eligible-commenters', [DocumentController::class, 'eligibleCommenters'])->name('documents.eligible_commenters');
 
         // Document management supporting types, authors, parts, pages
         Route::resource('document-types', DocumentTypeController::class);

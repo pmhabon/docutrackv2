@@ -584,18 +584,14 @@
                                 <option value="program_head" {{ old('role') == 'program_head' ? 'selected' : '' }}>Program Head</option>
                                 <option value="campus_director" {{ old('role') == 'campus_director' ? 'selected' : '' }}>Campus Director</option>
                                 <option value="faculty" {{ old('role') == 'faculty' ? 'selected' : '' }}>Faculty</option>
+                                <option value="student" {{ old('role') == 'student' ? 'selected' : '' }}>Student</option>
                             </select>
                             @error('role')<span class="text-danger">{{ $message }}</span>@enderror
                         </div>
                         <div>
                             <label>Campus </label>
-                            <select name="campus" id="campusSelect" class="form-select" required>
-                                <option value="">Select Campus</option>
-                                @foreach($campuses as $c)
-                                    <option value="{{ $c->name }}" data-id="{{ $c->id }}" {{ old('campus') == $c->name ? 'selected' : '' }}>{{ $c->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('campus')<span class="text-danger">{{ $message }}</span>@enderror
+                            <input type="hidden" name="campus" value="ISPSC Tagudin">
+                            <div class="form-control-plaintext">ISPSC Tagudin</div>
                         </div>
                     </div>
 

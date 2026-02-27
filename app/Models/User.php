@@ -6,7 +6,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Models\Campus;
 use App\Models\College;
 use App\Models\Program;
 
@@ -23,7 +22,6 @@ use App\Models\Program;
  * @property string|null $role
  * @property string|null $contactNumber
  * @property string|null $address
- * @property string|null $campus
  * @property string|null $rank
  * @property string|null $college
  * @property string|null $program
@@ -51,7 +49,6 @@ class User extends Authenticatable
         'role',
         'contactNumber',
         'address',
-        'campus',
         'rank',
         'college',
         'program',
@@ -82,7 +79,7 @@ class User extends Authenticatable
 
     public function campusModel()
     {
-        return $this->belongsTo(Campus::class, 'campus', 'name');
+        return null;
     }
 
     public function collegeModel()

@@ -52,6 +52,8 @@
                     <option value="campus_director" {{ $user->role === 'campus_director' ? 'selected' : '' }}>Campus Director</option>
                     <option value="dean" {{ $user->role === 'dean' ? 'selected' : '' }}>Dean</option>
                     <option value="program_head" {{ $user->role === 'program_head' ? 'selected' : '' }}>Program Head</option>
+                    <option value="faculty" {{ $user->role === 'faculty' ? 'selected' : '' }}>Faculty</option>
+                    <option value="student" {{ $user->role === 'student' ? 'selected' : '' }}>Student</option>
                     <option value="superadmin" {{ $user->role === 'superadmin' ? 'selected' : '' }}>Superadmin</option>
                 </select>
             </div>
@@ -59,12 +61,8 @@
             <div class="row mb-3">
                 <div class="col-md-4">
                     <label class="form-label">Campus</label>
-                    <select name="campus" class="form-select">
-                        <option value="">-- Select --</option>
-                        @foreach($campuses as $c)
-                            <option value="{{ $c->name }}" {{ (old('campus', $user->campus) === $c->name) ? 'selected' : '' }}>{{ $c->name }}</option>
-                        @endforeach
-                    </select>
+                    <input type="hidden" name="campus" value="{{ old('campus', $user->campus ?? 'ISPSC Tagudin') }}">
+                    <div class="form-control-plaintext">{{ old('campus', $user->campus ?? 'ISPSC Tagudin') }}</div>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">College</label>

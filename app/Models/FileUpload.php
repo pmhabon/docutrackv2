@@ -32,7 +32,6 @@ class FileUpload extends Model
         'file_path',
         'mime_type',
         'file_size',
-        'campus',
         'college',
         'program',
         'status',

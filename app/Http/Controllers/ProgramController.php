@@ -13,7 +13,7 @@ class ProgramController extends Controller
         $search = $request->input('search');
         $college_filter = $request->input('college');
         
-        $query = Program::with('college.campus');
+        $query = Program::with('college');
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%")

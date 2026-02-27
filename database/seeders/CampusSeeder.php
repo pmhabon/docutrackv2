@@ -9,18 +9,7 @@ class CampusSeeder extends Seeder
 {
     public function run()
     {
-        $campuses = [
-            'Main Campus',
-            'Candon',
-            'Santa Maria',
-            'Tagudin',
-            'Cervantes',
-            'Narvacan',
-            'Santiago',
-        ];
-
-        foreach ($campuses as $name) {
-            Campus::firstOrCreate(['name' => $name]);
-        }
+        // Campus seeding is disabled for single-campus deployment (ISPSC Tagudin).
+        // Intentionally left blank.
     }
 }

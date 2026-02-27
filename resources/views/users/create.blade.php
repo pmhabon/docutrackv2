@@ -74,6 +74,8 @@
                         <option value="campus_director">Campus Director</option>
                         <option value="dean">Dean</option>
                         <option value="program_head">Program Head</option>
+                        <option value="faculty">Faculty</option>
+                        <option value="student">Student</option>
                         <option value="superadmin">Superadmin</option>
                     </select>
                 </div>
@@ -81,12 +83,8 @@
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label class="form-label">Campus</label>
-                        <select name="campus" class="form-select">
-                            <option value="">-- Select --</option>
-                            @foreach($campuses as $c)
-                                <option value="{{ $c->name }}">{{ $c->name }}</option>
-                            @endforeach
-                        </select>
+                        <input type="hidden" name="campus" value="ISPSC Tagudin">
+                        <div class="form-control-plaintext">ISPSC Tagudin</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">College</label>

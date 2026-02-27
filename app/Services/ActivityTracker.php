@@ -23,7 +23,6 @@ class ActivityTracker
             'user_id' => $user?->id,
             'action' => $action,
             'details' => $details,
-            'campus' => $campus ?? $user?->campus,
             'college' => $college ?? $user?->college,
             'program' => $program ?? $user?->program,
             'ip' => Request::ip(),
@@ -114,12 +113,27 @@ class ActivityTracker
         if (! empty($changes['notify']) && is_array($changes['notify'])) {
             foreach ($changes['notify'] as $notify) {
                 try {
+                    $payload = $notify['data'] ?? [];
+
+                    // Ensure message and url exist for UI
+                    if (! isset($payload['message'])) {
+                        $type = $notify['type'] ?? '';
+                        if (str_starts_with($type, 'document.commenter') || str_contains($type, 'comment')) {
+                            $payload['message'] = "New activity on {$title}";
+                        } else {
+                            $payload['message'] = $payload['message'] ?? "Notification: {$title}";
+                        }
+                    }
+                    if (! isset($payload['url'])) {
+                        $payload['url'] = $payload['url'] ?? route('documents.show', $documentId);
+                    }
+
                     \DB::table('notifications')->insert([
                         'id' => (string) \Illuminate\Support\Str::uuid(),
                         'type' => $notify['type'] ?? 'document.notification',
                         'notifiable_type' => 'App\\Models\\User',
                         'notifiable_id' => $notify['user_id'],
-                        'data' => json_encode($notify['data'] ?? []),
+                        'data' => json_encode($payload),
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);

@@ -24,8 +24,8 @@
         <div class="col-md-3">
             <div class="card-stat">
                 <i class="fas fa-map-marker"></i>
-                <h3 style="margin:10px 0 5px;color:#333">{{ \App\Models\Campus::count() }}</h3>
-                <p style="margin:0;color:#666;font-size:14px">Total Campuses</p>
+                <h3 style="margin:10px 0 5px;color:#333">1</h3>
+                <p style="margin:0;color:#666;font-size:14px">Total Campuses (ISPSC Tagudin)</p>
             </div>
         </div>
         <div class="col-md-3">
@@ -36,6 +36,7 @@
             </div>
         </div>
     </div>
+    @include('dashboard._formatting_widget')
 
     <!-- Centered Documents Summary -->
     <!-- Quick Actions (moved to top) -->
@@ -59,10 +60,10 @@
             </a>
         </div>
         <div class="col-md-3">
-            <a href="{{ route('campuses.index') }}" class="btn btn-light" style="width:100%;padding:15px;text-align:left;border:2px solid #eee">
-                <div><i class="fas fa-map-marker" style="font-size:24px;color:var(--maroon)"></i></div>
+            <a href="{{ route('programs.index') }}" class="btn btn-light" style="width:100%;padding:15px;text-align:left;border:2px solid #eee">
+                <div><i class="fas fa-graduation-cap" style="font-size:24px;color:var(--maroon)"></i></div>
                 <div style="margin-top:8px">
-                    <strong>Manage Campuses</strong>
+                    <strong>Manage Programs</strong>
                     <p style="margin:0;font-size:12px;color:#999">View & manage</p>
                 </div>
             </a>
@@ -143,7 +144,9 @@
                         <tbody>
                             @foreach(\App\Models\Document::with('commenters','type','user')->latest()->take(20)->get() as $d)
                                 @php
-                                    $rowStatus = $d->commenters->count() > 0 ? ($d->status === 'reviews_done' ? 'reviews_done' : 'pending') : $d->status;
+                                    $rowStatus = $d->commenters->count() > 0
+                                        ? ($d->status === 'reviews_done' ? 'reviews_done' : 'pending')
+                                        : 'no_reviewers_assigned';
                                     $typeClass = $d->document_type_id ? 'type-' . $d->document_type_id : 'type-none';
                                 @endphp
                                 <tr data-status="{{ $rowStatus }}" data-type="{{ $typeClass }}">
@@ -156,6 +159,9 @@
                                             <span class="badge bg-success">Approved</span>
                                         @elseif($rowStatus === 'rejected')
                                             <span class="badge bg-danger">Rejected</span>
+                                        @elseif($rowStatus === 'no_reviewers_assigned')
+                                            <span class="badge bg-info">No reviewers assigned</span>
+                                        
                                         @else
                                             <span class="badge bg-warning">Pending</span>
                                         @endif
@@ -201,13 +207,9 @@
                             </td>
                             <td>{{ $log->details ?? 'N/A' }}</td>
                             <td>
-                                @if($log->campus)
-                                    <span class="badge bg-info" style="cursor:help" title="{{ $log->campus }}{{ $log->college ? ' > ' . $log->college : '' }}">
-                                        {{ Str::limit($log->campus, 12) }}
-                                    </span>
-                                @else
-                                    <span style="color:#ccc">—</span>
-                                @endif
+                                <span class="badge bg-info" style="cursor:help" title="ISPSC Tagudin{{ $log->college ? ' > ' . $log->college : '' }}">
+                                    ISPSC Tagudin{{ $log->college ? ' › ' . Str::limit($log->college, 12) : '' }}
+                                </span>
                             </td>
                             <td style="font-size:12px;color:#999">
                                 {{ $log->created_at?->format('Y-m-d H:i') ?? 'N/A' }}

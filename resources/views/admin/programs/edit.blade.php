@@ -28,9 +28,9 @@
                     <label for="college_id" class="form-label"><i class="fas fa-building"></i> College *</label>
                     <select name="college_id" id="college_id" class="form-select @error('college_id') is-invalid @enderror" required>
                         <option value="">Select College</option>
-                        @foreach(\App\Models\College::with('campus')->get() as $college)
+                        @foreach(\App\Models\College::orderBy('name')->get() as $college)
                             <option value="{{ $college->id }}" {{ old('college_id', $program->college_id) == $college->id ? 'selected' : '' }}>
-                                {{ $college->campus->name ?? 'N/A' }} - {{ $college->name }}
+                                {{ $college->name }}
                             </option>
                         @endforeach
                     </select>

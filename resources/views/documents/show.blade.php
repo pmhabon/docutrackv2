@@ -33,20 +33,32 @@
             @endphp
 
             <small>Status: 
-                @if($totalCommenters === 0)
-                    @if($document->status === 'pending')
-                        <span class="badge bg-warning">Pending</span>
-                    @elseif($document->status === 'approved')
-                        <span class="badge bg-success">Approved</span>
-                    @else
-                        <span class="badge bg-danger">Rejected</span>
-                    @endif
-                @else
-                    @if($actions['pending'] > 0)
-                        <span class="badge bg-warning">Pending</span>
-                    @else
-                        <span class="badge bg-success">Reviews Done</span>
-                    @endif
+                    @php
+                        $status = $document->status;
+                        $statusMap = [
+                            'approved' => ['label' => 'Approved', 'class' => 'bg-success'],
+                            'rejected' => ['label' => 'Rejected', 'class' => 'bg-danger'],
+                            'pending' => ['label' => 'Pending', 'class' => 'bg-warning text-dark'],
+                            'no_reviewers_assigned' => ['label' => 'No reviewers assigned', 'class' => 'bg-secondary'],
+                            'pending_formatting' => ['label' => 'Pending formatting', 'class' => 'bg-info text-dark'],
+                            'formatting_queued' => ['label' => 'Formatting queued', 'class' => 'bg-info text-dark'],
+                            'formatting_processing' => ['label' => 'Formatting processing', 'class' => 'bg-primary text-white'],
+                            'formatting_failed' => ['label' => 'Formatting failed', 'class' => 'bg-danger'],
+                            'reviews_done' => ['label' => 'Reviews done', 'class' => 'bg-secondary']
+                        ];
+                        $display = $statusMap[$status] ?? ['label' => ucfirst(str_replace('_', ' ', $status)), 'class' => 'bg-secondary'];
+                    @endphp
+                    <span id="doc-status-badge" class="badge {{ $display['class'] }} me-2">{{ $display['label'] }}</span>
+                    <small class="text-muted">Uploaded {{ $document->created_at->diffForHumans() }}</small>
+                </small>
+                @if(in_array($document->status, ['formatting_queued','formatting_processing','formatting_failed']))
+                    <div class="mt-2">
+                        <strong>Formatting status:</strong>
+                        <span id="formatting-status-label" class="ms-2">{{ $display['label'] }}</span>
+                        @if($document->status === 'formatting_failed')
+                            <a href="{{ route('documents.backups', $document->id) }}" class="btn btn-sm btn-outline-secondary ms-3">View backups / restore</a>
+                        @endif
+                    </div>
                 @endif
             </small>
         </div>
@@ -194,3 +206,46 @@
     </div>
 </div>
 @endsection
+
+    @section('scripts')
+    <script>
+    (() => {
+        const pollingStates = ['formatting_queued','formatting_processing','formatting_failed'];
+        const statusUrl = "{{ route('documents.formatting_status', $document->id) }}";
+        const badge = document.getElementById('doc-status-badge');
+        const fmtLabel = document.getElementById('formatting-status-label');
+
+        if (!badge) return;
+
+        function applyDisplay(data) {
+            if (!data) return;
+            // update badge text and classes
+            badge.textContent = data.label;
+            // remove existing bg- classes
+            badge.className = 'badge me-2 ' + data.class;
+            if (fmtLabel) fmtLabel.textContent = data.label;
+        }
+
+        function pollOnce() {
+            fetch(statusUrl, { credentials: 'same-origin' })
+                .then(r => r.ok ? r.json() : Promise.reject(r))
+                .then(json => {
+                    applyDisplay(json);
+                    if (!pollingStates.includes(json.status)) {
+                        // final state reached — stop polling and reload to reflect full state
+                        clearInterval(window._docFmtPoll);
+                        setTimeout(() => location.reload(), 800);
+                    }
+                })
+                .catch(() => {/* silent */});
+        }
+
+        // start polling only if current status is one of the formatting states
+        const currentStatus = "{{ $document->status }}";
+        if (pollingStates.includes(currentStatus)) {
+            pollOnce();
+            window._docFmtPoll = setInterval(pollOnce, 5000);
+        }
+    })();
+    </script>
+    @endsection

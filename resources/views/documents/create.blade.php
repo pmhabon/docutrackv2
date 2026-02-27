@@ -5,20 +5,155 @@
 
 @section('content')
 <div class="container" style="max-width:600px">
-    @if($errors->any())
-        <div class="alert alert-danger">
-            <strong>Error!</strong>
-            <ul class="list-unstyled mb-0">
-                @foreach($errors->all() as $err)
-                    <li>{{ $err }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
+    {{-- top-level error list removed to avoid duplicate messages; detailed validation block remains below --}}
 
     <div class="card-stats p-4 rounded">
         <form method="POST" action="{{ route('documents.store') }}" enctype="multipart/form-data">
             @csrf
+
+            @if(session('validation_details') || $errors->has('file'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <div style="font-weight:600">Upload couldn't be processed</div>
+                            <div style="margin-top:6px">The uploaded document doesn't match the selected template. Please address the issues below.</div>
+                            @if(session('validation_details'))
+                                @php
+                                    $vd = session('validation_details');
+                                    // remove duplicate error messages and filter out template-side messages
+                                    $errs = array_values(array_unique($vd['errors'] ?? []));
+                                    $errs_no_template = array_values(array_filter($errs, function($e){ return stripos($e, 'Template') === false; }));
+
+                                    // detect uploaded-side problems only (template is authoritative; do not report template-side missing)
+                                    $hasStuPg = false;
+                                    $hasStuNormal = false;
+                                    $hasStuH1 = false;
+                                    foreach ($errs_no_template as $ee) {
+                                        if (strpos($ee, 'Uploaded document missing page margin') !== false) $hasStuPg = true;
+                                        if (strpos($ee, 'Uploaded document does not define a Normal') !== false) $hasStuNormal = true;
+                                        if (strpos($ee, 'Uploaded document does not define a Heading1') !== false) $hasStuH1 = true;
+                                    }
+
+                                    // check detailed mismatches where available
+                                    $marginsMismatch = false;
+                                    if (!empty($vd['details']['page_margins'])) {
+                                        foreach ($vd['details']['page_margins'] as $side => $vals) {
+                                            if (isset($vals['match']) && $vals['match'] === false) { $marginsMismatch = true; break; }
+                                            // older detail shape may not include 'match' so also check diff
+                                            if (isset($vals['diff']) && (int)$vals['diff'] !== 0) { $marginsMismatch = true; break; }
+                                        }
+                                    }
+
+                                    $normalFontMismatch = false; $normalLineMismatch = false; $normalIndentMismatch = false;
+                                    if (!empty($vd['details']['normal_style'])) {
+                                        $ns = $vd['details']['normal_style'];
+                                        if (isset($ns['font_match']) && $ns['font_match'] === false) $normalFontMismatch = true;
+                                        if (isset($ns['line_match']) && $ns['line_match'] === false) $normalLineMismatch = true;
+                                        if (isset($ns['indent_match']) && $ns['indent_match'] === false) $normalIndentMismatch = true;
+                                    }
+
+                                    $h1FontMismatch = false;
+                                    if (!empty($vd['details']['heading1'])) {
+                                        $h1 = $vd['details']['heading1'];
+                                        if (isset($h1['font_match']) && $h1['font_match'] === false) $h1FontMismatch = true;
+                                    }
+
+                                    // header/footer mismatches
+                                    $headerMismatch = false; $footerMismatch = false;
+                                    $tplHasHeader = false; $tplHasFooter = false;
+                                    if (!empty($vd['details']['header'])) {
+                                        $tplHasHeader = isset($vd['details']['header']['template']) && $vd['details']['header']['template'] !== null;
+                                        if (isset($vd['details']['header']['match']) && $vd['details']['header']['match'] === false) $headerMismatch = true;
+                                    }
+                                    if (!empty($vd['details']['footer'])) {
+                                        $tplHasFooter = isset($vd['details']['footer']['template']) && $vd['details']['footer']['template'] !== null;
+                                        if (isset($vd['details']['footer']['match']) && $vd['details']['footer']['match'] === false) $footerMismatch = true;
+                                    }
+
+                                    $condensed = [];
+
+                                    // Margins: template is authoritative. If template doesn't define margins, tell user.
+                                    // Margins: only report uploaded problems (template-side messages are omitted)
+                                    if ($marginsMismatch) {
+                                        $condensed[] = 'Page margins incorrect.';
+                                    } else if ($hasStuPg) {
+                                        $condensed[] = 'Page margins incorrect.';
+                                    }
+
+                                    // Normal style: template authoritative
+                                    // Normal style: only report uploaded-side problems or mismatches
+                                    $styleProblems = [];
+                                    if ($normalFontMismatch) $styleProblems[] = 'font size';
+                                    if ($normalLineMismatch) $styleProblems[] = 'line spacing';
+                                    if ($normalIndentMismatch) $styleProblems[] = 'indentation';
+                                    if (!empty($styleProblems)) {
+                                        $condensed[] = 'Normal style incorrect (' . implode(', ', $styleProblems) . ').';
+                                    } else if ($hasStuNormal) {
+                                        $condensed[] = 'Normal style incorrect.';
+                                    }
+
+                                    // Heading1: template authoritative
+                                    // Heading1: only report uploaded-side problems or mismatches
+                                    if ($h1FontMismatch) {
+                                        $condensed[] = 'Heading1 incorrect.';
+                                    } else if ($hasStuH1) {
+                                        $condensed[] = 'Heading1 incorrect.';
+                                    }
+
+                                    // Header/footer: template authoritative
+                                    // Header/footer: only report uploaded-side problems or mismatches
+                                    if ($headerMismatch) $condensed[] = 'Header incorrect.';
+                                    if (!empty($vd['details']['header']) && empty($vd['details']['header']['uploaded'])) $condensed[] = 'Header incorrect.';
+                                    if ($footerMismatch) $condensed[] = 'Footer incorrect.';
+                                    if (!empty($vd['details']['footer']) && empty($vd['details']['footer']['uploaded'])) $condensed[] = 'Footer incorrect.';
+                                @endphp
+
+                                <hr>
+                                <div style="font-size:13px">
+                                    @if(!empty($condensed))
+                                        <ul style="margin-bottom:6px">
+                                            @foreach($condensed as $c)
+                                                <li>{{ $c }}</li>
+                                            @endforeach
+                                        </ul>
+                                    @endif
+
+                                    <div style="margin-top:6px;font-style:italic;font-size:13px">Validation checks: margin size, font size, line spacing, heading styles, indentation.</div>
+
+                                    <a href="#" id="vd_toggle" onclick="event.preventDefault(); var el=document.getElementById('vd_details'); el.style.display = (el.style.display==='none') ? 'block' : 'none'; this.textContent = (el.style.display==='none') ? 'Show details' : 'Hide details';">Show details</a>
+
+                                    <div id="vd_details" style="display:none;margin-top:8px">
+                                        @if(!empty($errs))
+                                            <div><strong>Errors:</strong></div>
+                                            <ul>
+                                                @foreach($errs as $e)
+                                                    <li>{{ $e }}</li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                        @if(!empty($vd['details']))
+                                            <div><strong>Details:</strong></div>
+                                            @if(!empty($vd['details']['page_margins']))
+                                                <div><em>Page margins (twips):</em></div>
+                                                <ul>
+                                                @foreach($vd['details']['page_margins'] as $side => $vals)
+                                                    <li>{{ ucfirst($side) }} — template: {{ $vals['template'] }}, uploaded: {{ $vals['uploaded'] }}, diff: {{ $vals['diff'] }}</li>
+                                                @endforeach
+                                                </ul>
+                                            @endif
+                                            @if(!empty($vd['details']['normal_style']))
+                                                <div><em>Normal style:</em></div>
+                                                <pre style="white-space:pre-wrap;background:#f8f9fa;padding:8px;border-radius:6px">{{ json_encode($vd['details']['normal_style'], JSON_PRETTY_PRINT) }}</pre>
+                                            @endif
+                                            @if(!empty($vd['details']['heading1']))
+                                                <div><em>Heading1:</em></div>
+                                                <pre style="white-space:pre-wrap;background:#f8f9fa;padding:8px;border-radius:6px">{{ json_encode($vd['details']['heading1'], JSON_PRETTY_PRINT) }}</pre>
+                                            @endif
+                                        @endif
+                                    </div>
+                                </div>
+                    @endif
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            @endif
 
             <div class="mb-3">
                 <label class="form-label">Document Title</label>
@@ -45,6 +180,23 @@
                     @endforeach
                 </select>
             </div>
+
+            <div class="mb-3">
+                <label class="form-label">Template Used</label>
+                <select name="template_id" id="templateSelect" class="form-select">
+                    <option value="">-- No template / Detect automatically --</option>
+                    @if(!empty($templates) && $templates->count())
+                        @foreach($templates as $tpl)
+                            <option value="{{ $tpl->id }}" {{ old('template_id') == $tpl->id ? 'selected' : '' }}>{{ $tpl->title ?? $tpl->original_name ?? 'Template #' . $tpl->id }} @if($tpl->college) ({{ $tpl->college }}) @endif @if($tpl->program) - {{ $tpl->program }} @endif</option>
+                        @endforeach
+                    @endif
+                </select>
+                <small class="text-muted">Select the template that the uploaded document is based on to enable precise validation. (Required for DOCX uploads)</small>
+            </div>
+
+            {{-- Formatting options moved to Template uploader. --}}
+
+            {{-- Citation style moved to Template metadata; document uploader no longer requests citation style. --}}
 
             <div class="mb-3">
                 <label class="form-label">Number of Authors</label>
@@ -105,7 +257,7 @@
                     <div><strong>{{ auth()->user()->firstName }} {{ auth()->user()->lastName }}</strong></div>
                     <div><span class="badge bg-info">{{ ucfirst(str_replace('_',' ', auth()->user()->role ?? '')) }}</span></div>
                     <div style="margin-top:6px">
-                        <i class="fas fa-map-marker" style="width:14px"></i> {{ auth()->user()->campus ?? '—' }}
+                        <i class="fas fa-map-marker" style="width:14px"></i> ISPSC Tagudin
                     </div>
                     <div><i class="fas fa-building" style="width:14px"></i> {{ auth()->user()->college ?? '—' }}</div>
                 </div>
@@ -286,6 +438,38 @@ document.addEventListener('DOMContentLoaded', function() {
     const singleAuthorInput = document.querySelector('input[name="single_author_name"]');
     if (singleAuthorInput) {
         setupAutocomplete(singleAuthorInput, authorsList);
+    }
+});
+</script>
+<script>
+// Toggle template select requirement based on chosen file type
+document.addEventListener('DOMContentLoaded', function(){
+    const fileInput = document.querySelector('input[name="file"]');
+    const templateSelect = document.getElementById('templateSelect');
+
+    function updateTemplateRequirement() {
+        if (!fileInput || !templateSelect) return;
+        const val = fileInput.value || '';
+        const ext = val.split('.').pop().toLowerCase();
+        if (ext === 'docx') {
+            templateSelect.required = true;
+        } else {
+            templateSelect.required = false;
+        }
+    }
+
+    if (fileInput) {
+        fileInput.addEventListener('change', updateTemplateRequirement);
+        updateTemplateRequirement();
+    }
+    // Margin preset toggle (show custom inputs when chosen)
+    const marginPreset = document.getElementById('marginPreset');
+    const customMargins = document.getElementById('customMargins');
+    if (marginPreset) {
+        marginPreset.addEventListener('change', function() {
+            if (!customMargins) return;
+            customMargins.style.display = this.value === 'custom' ? 'block' : 'none';
+        });
     }
 });
 </script>

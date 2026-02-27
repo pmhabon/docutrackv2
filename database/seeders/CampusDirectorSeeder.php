@@ -22,7 +22,7 @@ class CampusDirectorSeeder extends Seeder
                 'email' => $email,
                 'password' => Hash::make('CampusDir123!'),
                 'role' => 'campus_director',
-                'campus' => 'Main Campus',
+                // campus field removed for single-campus deployment
                 'college' => 'CAS',
                 'program' => 'ETC',
             ]);

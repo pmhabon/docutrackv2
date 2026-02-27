@@ -16,12 +16,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <select id="campusFilter" class="form-select">
-                <option value="">All Campuses</option>
-                @foreach(\App\Models\Campus::all() as $campus)
-                    <option value="{{ $campus->id }}">{{ $campus->name }}</option>
-                @endforeach
-            </select>
+            <!-- Single-campus deployment: campus filter removed -->
         </div>
         <div class="col-md-3 text-end">
             <a href="{{ route('colleges.create') }}" class="btn btn-primary">
@@ -52,7 +47,7 @@
                     <tr>
                         <th style="color:#333"><i class="fas fa-building"></i> College Name</th>
                         <th><i class="fas fa-tag"></i> Code</th>
-                        <th><i class="fas fa-map-marker"></i> Campus</th>
+                        <!-- Campus column removed for single-campus deployment -->
                         <th><i class="fas fa-graduation-cap"></i> Programs</th>
                         <th><i class="fas fa-desc"></i> Description</th>
                         <th style="text-align:center">Actions</th>
@@ -61,10 +56,11 @@
                 <tbody id="collegeTable">
                     @if($colleges->count() > 0)
                         @foreach ($colleges as $college)
-                            <tr data-campus="{{ $college->campus_id }}">
+                            <tr>
                                 <td><strong>{{ $college->name }}</strong></td>
                                 <td><code>{{ $college->code }}</code></td>
-                                <td><span class="badge bg-secondary">{{ $college->campus->name ?? 'N/A' }}</span></td>
+                                <!-- Campus: ISPSC Tagudin -->
+                                {{-- <td><span class="badge bg-secondary">ISPSC Tagudin</span></td> --}}
                                 <td><span class="badge bg-info">{{ $college->programs_count }}</span></td>
                                 <td>{{ Str::limit($college->description, 40) ?? 'N/A' }}</td>
                                 <td style="text-align:center;gap:5px;display:flex;justify-content:center">

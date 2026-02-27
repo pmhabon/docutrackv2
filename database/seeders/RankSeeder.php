@@ -14,12 +14,9 @@ class RankSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('ranks')->insert([
-            ['name' => 'Professor'],
-            ['name' => 'Associate Professor'],
-            ['name' => 'Assistant Professor'],
-            ['name' => 'Lecturer'],
-            ['name' => 'Instructor'],
-        ]);
+        $names = ['Professor','Associate Professor','Assistant Professor','Lecturer','Instructor','Student'];
+        foreach ($names as $n) {
+            DB::table('ranks')->insertOrIgnore(['name' => $n]);
+        }
     }
 }

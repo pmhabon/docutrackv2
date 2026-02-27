@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-use App\Models\Campus;
 use App\Models\College;
 use App\Models\Program;
 use Illuminate\Support\Str;
@@ -19,47 +18,32 @@ class UserManagementController extends Controller
 
         $query = User::query();
 
-        // Apply role-based visibility
+        // Apply role-based visibility: simplify for single-campus deployment
         if ($user->role === 'superadmin') {
             // superadmin sees all users
-        } elseif ($user->role === 'campus_director') {
-            $query->where('campus', $user->campus);
         } elseif ($user->role === 'dean') {
-            $query->where('campus', $user->campus)->where('college', $user->college);
+            $query->where('college', $user->college);
         } elseif ($user->role === 'program_head') {
             $query->where(function($q) use ($user) {
-                $q->where(function($q2) use ($user) {
-                    $q2->where('role', 'campus_director')->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'dean')->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'faculty')->where('program', $user->program)->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'program_head')->where('college', $user->college)->where('campus', $user->campus);
-                });
+                $q->where('role', 'dean')->where('college', $user->college)
+                  ->orWhere(function($q2) use ($user) {
+                      $q2->where('role', 'faculty')->where('program', $user->program)->where('college', $user->college);
+                  })
+                  ->orWhere(function($q2) use ($user) {
+                      $q2->where('role', 'program_head')->where('college', $user->college);
+                  });
             });
         } elseif ($user->role === 'faculty') {
             $query->where(function($q) use ($user) {
-                $q->where(function($q2) use ($user) {
-                    $q2->where('role', 'campus_director')->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'dean')->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'program_head')->where('program', $user->program)->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere('id', $user->id);
+                $q->where('role', 'dean')->where('college', $user->college)
+                  ->orWhere(function($q2) use ($user) {
+                      $q2->where('role', 'program_head')->where('program', $user->program)->where('college', $user->college);
+                  })
+                  ->orWhere('id', $user->id);
             });
         }
 
         // Optional request filters (further narrow the visibility)
-        if ($request->filled('campus')) {
-            $query->where('campus', $request->campus);
-        }
         if ($request->filled('college')) {
             $query->where('college', $request->college);
         }
@@ -78,11 +62,10 @@ class UserManagementController extends Controller
 
         $users = $query->paginate(20)->withQueryString();
 
-        $campuses = Campus::orderBy('name')->get();
         $colleges = College::orderBy('name')->get();
         $programs = Program::orderBy('name')->get();
 
-        return view('users.index', compact('users','campuses','colleges','programs'));
+        return view('users.index', compact('users','colleges','programs'));
     }
 
     public function show(User $user)
@@ -93,22 +76,20 @@ class UserManagementController extends Controller
 
     public function edit(User $user)
     {
-        $campuses = Campus::orderBy('name')->get();
         $colleges = College::orderBy('name')->get();
         $programs = Program::orderBy('name')->get();
 
         $ranks = \App\Models\Rank::orderBy('name')->get();
-        return view('users.edit', compact('user','campuses','colleges','programs','ranks'));
+        return view('users.edit', compact('user','colleges','programs','ranks'));
     }
 
     public function create()
     {
-        $campuses = Campus::orderBy('name')->get();
         $colleges = College::orderBy('name')->get();
         $programs = Program::orderBy('name')->get();
 
         $ranks = \App\Models\Rank::orderBy('name')->get();
-        return view('users.create', compact('campuses', 'colleges', 'programs', 'ranks'));
+        return view('users.create', compact('colleges', 'programs', 'ranks'));
     }
 
     public function store(Request $request)
@@ -119,11 +100,10 @@ class UserManagementController extends Controller
             'middleName' => 'nullable|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:campus_director,dean,program_head,superadmin',
+            'role' => 'required|in:campus_director,dean,program_head,faculty,student,superadmin',
             'rank' => 'nullable|exists:ranks,name',
             'contactNumber' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:500',
-            'campus' => 'nullable|string|max:255',
             'college' => 'nullable|string|max:255',
             'program' => 'nullable|string|max:255',
             'status' => 'nullable|in:active,inactive',
@@ -139,29 +119,11 @@ class UserManagementController extends Controller
             'rank' => $data['rank'] ?? null,
             'contactNumber' => $data['contactNumber'] ?? null,
             'address' => $data['address'] ?? null,
-            'campus' => $data['campus'] ?? null,
             'college' => $data['college'] ?? null,
             'program' => $data['program'] ?? null,
             'status' => $data['status'] ?? 'active',
         ]);
 
-        // Ensure master records exist
-        if (!empty($data['campus'])) {
-            $campus = Campus::firstOrCreate(['name' => $data['campus']]);
-            if (!empty($data['college'])) {
-                $college = College::firstOrCreate(
-                    ['name' => $data['college'], 'campus_id' => $campus->id],
-                    ['code' => strtoupper(Str::slug($data['college'], '_'))]
-                );
-                if (!empty($data['program'])) {
-                    $programCode = strtoupper(Str::slug($data['program'], '_'));
-                    Program::firstOrCreate(
-                        ['name' => $data['program'], 'college_id' => $college->id],
-                        ['code' => $programCode]
-                    );
-                }
-            }
-        }
 
         ActivityTracker::log('user_created', "User {$user->firstName} {$user->lastName} created by admin");
 
@@ -174,12 +136,11 @@ class UserManagementController extends Controller
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|in:campus_director,dean,program_head,superadmin',
+            'role' => 'required|in:campus_director,dean,program_head,faculty,student,superadmin',
             'middleName' => 'nullable|string|max:255',
             'rank' => 'nullable|exists:ranks,name',
             'contactNumber' => 'nullable|string|max:50',
             'address' => 'nullable|string|max:500',
-            'campus' => 'nullable|string',
             'college' => 'nullable|string',
             'program' => 'nullable|string',
             'status' => 'nullable|in:active,inactive',
@@ -188,25 +149,9 @@ class UserManagementController extends Controller
         $oldRole = $user->role;
         $oldStatus = $user->status;
 
+        // Ensure campus default exists when updating
+        $data['campus'] = $data['campus'] ?? 'ISPSC Tagudin';
         $user->update($data);
-
-        // Ensure master records exist for updated values
-        if (!empty($data['campus'])) {
-            $campus = Campus::firstOrCreate(['name' => $data['campus']]);
-            if (!empty($data['college'])) {
-                $college = College::firstOrCreate(
-                    ['name' => $data['college'], 'campus_id' => $campus->id],
-                    ['code' => strtoupper(Str::slug($data['college'], '_'))]
-                );
-                if (!empty($data['program'])) {
-                    $programCode = strtoupper(Str::slug($data['program'], '_'));
-                    Program::firstOrCreate(
-                        ['name' => $data['program'], 'college_id' => $college->id],
-                        ['code' => $programCode]
-                    );
-                }
-            }
-        }
 
         // Log role change
         if ($oldRole !== $data['role']) {
@@ -230,67 +175,20 @@ class UserManagementController extends Controller
     public function deactivate(User $user)
     {
         $oldStatus = $user->status;
-        $user->update(['status' => 'inactive']);
-        
-        ActivityTracker::logStatusChange($user->id, $oldStatus, 'inactive');
-
-        return back()->with('success', 'User deactivated.');
-    }
-
-    public function activate(User $user)
-    {
-        $oldStatus = $user->status;
         $user->update(['status' => 'active']);
-        
+
         ActivityTracker::logStatusChange($user->id, $oldStatus, 'active');
 
         return back()->with('success', 'User activated.');
     }
 
+
     // Dashboard-facing visibility page for all authenticated users
     public function visibility(Request $request)
     {
         $user = auth()->user();
-
-        $query = User::query();
-
-        // Apply role-based visibility same as index
-        if ($user->role === 'superadmin') {
-            // superadmin sees all users
-        } elseif ($user->role === 'campus_director') {
-            $query->where('campus', $user->campus);
-        } elseif ($user->role === 'dean') {
-            $query->where('campus', $user->campus)->where('college', $user->college);
-        } elseif ($user->role === 'program_head') {
-            $query->where(function($q) use ($user) {
-                $q->where(function($q2) use ($user) {
-                    $q2->where('role', 'campus_director')->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'dean')->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'faculty')->where('program', $user->program)->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'program_head')->where('college', $user->college)->where('campus', $user->campus);
-                });
-            });
-        } elseif ($user->role === 'faculty') {
-            $query->where(function($q) use ($user) {
-                $q->where(function($q2) use ($user) {
-                    $q2->where('role', 'campus_director')->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'dean')->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere(function($q2) use ($user) {
-                    $q2->where('role', 'program_head')->where('program', $user->program)->where('college', $user->college)->where('campus', $user->campus);
-                })
-                ->orWhere('id', $user->id);
-            });
-        }
-
+        // For the dashboard visibility page, show all non-student users to every authenticated user
+        $query = User::where('role', '!=', 'student');
         if ($request->filled('q')) {
             $q = $request->q;
             $query->where(function($qry) use ($q) {
@@ -300,7 +198,7 @@ class UserManagementController extends Controller
             });
         }
 
-        $users = $query->orderBy('campus')->orderBy('college')->orderBy('program')->get();
+        $users = $query->orderBy('college')->orderBy('program')->get();
 
         return view('dashboard.users_visibility', compact('users'));
     }

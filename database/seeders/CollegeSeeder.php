@@ -4,17 +4,16 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\College;
-use App\Models\Campus;
 
 class CollegeSeeder extends Seeder
 {
     public function run()
     {
-        $main = Campus::where('name', 'Main Campus')->first();
+        // Single-campus deployment: create colleges without campus relations
         $colleges = [
-            ['name' => 'College of Education', 'code' => 'COE', 'campus_id' => $main->id ?? null],
-            ['name' => 'College of Arts & Sciences', 'code' => 'CAS', 'campus_id' => $main->id ?? null],
-            ['name' => 'College of Engineering', 'code' => 'COEGR', 'campus_id' => $main->id ?? null],
+            ['name' => 'College of Education', 'code' => 'COE'],
+            ['name' => 'College of Arts & Sciences', 'code' => 'CAS'],
+            ['name' => 'College of Engineering', 'code' => 'COEGR'],
         ];
 
         foreach ($colleges as $c) {

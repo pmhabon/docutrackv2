@@ -15,12 +15,11 @@ class ActivityLogController extends Controller
         $query = ActivityLog::query()->latest();
 
         // scope logs by role
-        if ($user->role === 'campus_director') {
-            $query->where('campus', $user->campus);
-        } elseif ($user->role === 'dean') {
-            $query->where('campus', $user->campus)->where('college', $user->college);
-        } elseif ($user->role === 'program_head') {
-            $query->where('campus', $user->campus)->where('college', $user->college)->where('program', $user->program);
+            // Role-based scoping for single-campus deployment: scope by college/program only
+            if ($user->role === 'dean') {
+                $query->where('college', $user->college);
+            } elseif ($user->role === 'program_head' || $user->role === 'faculty') {
+                $query->where('college', $user->college)->where('program', $user->program);
         }
 
         $logs = $query->paginate(25);

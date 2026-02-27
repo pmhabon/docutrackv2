@@ -24,18 +24,7 @@
                 @csrf
                 @method('PUT')
 
-                <div class="mb-3">
-                    <label for="campus_id" class="form-label"><i class="fas fa-map-marker"></i> Campus *</label>
-                    <select name="campus_id" id="campus_id" class="form-select @error('campus_id') is-invalid @enderror" required>
-                        <option value="">Select Campus</option>
-                        @foreach(\App\Models\Campus::all() as $campus)
-                            <option value="{{ $campus->id }}" {{ old('campus_id', $college->campus_id) == $campus->id ? 'selected' : '' }}>{{ $campus->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('campus_id')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
+                <!-- Campus selection removed for single-campus deployment (ISPSC Tagudin) -->
 
                 <div class="mb-3">
                     <label for="name" class="form-label"><i class="fas fa-building"></i> College Name *</label>

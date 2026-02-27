@@ -15,15 +15,15 @@ use Illuminate\Database\Eloquent\Model;
  */
 class College extends Model
 {
-    protected $fillable = ['name', 'code', 'campus_id', 'description'];
-
-    public function campus()
-    {
-        return $this->belongsTo(Campus::class);
-    }
+    protected $fillable = ['name', 'code', 'description'];
 
     public function programs()
     {
         return $this->hasMany(Program::class);
+    }
+
+    public function campus()
+    {
+        return $this->belongsTo(Campus::class, 'campus_id');
     }
 }

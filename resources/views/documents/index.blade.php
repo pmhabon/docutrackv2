@@ -16,10 +16,16 @@
 
     <div class="card-stats p-3 rounded">
         <form method="GET" class="mb-3">
-            <div class="row g-2">
-                <div class="col-md-4">
+            <div class="row g-2 mb-2">
+                <div class="col-md-8">
                     <input type="text" name="search" value="{{ request('search') }}" class="form-control" placeholder="Search title or description...">
                 </div>
+                <div class="col-md-4 d-grid">
+                    <button class="btn btn-secondary">Filter</button>
+                </div>
+            </div>
+
+            <div class="row g-2">
                 <div class="col-md-2">
                     <select name="status" class="form-select">
                         <option value="">All Statuses</option>
@@ -36,7 +42,7 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <select name="author" class="form-select">
                         <option value="">All Authors</option>
                         @foreach($authors as $a)
@@ -44,8 +50,21 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2 d-grid">
-                    <button class="btn btn-secondary">Filter</button>
+                <div class="col-md-2">
+                    <select name="college" class="form-select">
+                        <option value="">All Colleges</option>
+                        @foreach($colleges as $c)
+                            <option value="{{ $c }}" {{ request('college') == $c ? 'selected' : '' }}>{{ $c }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="program" class="form-select">
+                        <option value="">All Programs</option>
+                        @foreach($programs as $p)
+                            <option value="{{ $p }}" {{ request('program') == $p ? 'selected' : '' }}>{{ $p }}</option>
+                        @endforeach
+                    </select>
                 </div>
             </div>
         </form>
@@ -59,7 +78,7 @@
                         <th>Authors</th>
                         <th>Status</th>
                         <th>Uploaded by</th>
-                        <th>Campus / College / Role</th>
+                        <th>College / Role</th>
                         <th>Date</th>
                         <th>Action</th>
                     </tr>
@@ -110,18 +129,12 @@
                                         <small class="text-muted">{{ $actions['approve'] }} approves · {{ $actions['reject'] }} rejects · {{ $actions['revise'] }} revise</small>
                                     </div>
                                 @else
-                                    @if($doc->status === 'pending')
-                                        <span class="badge bg-warning">Pending</span>
-                                    @elseif($doc->status === 'approved')
-                                        <span class="badge bg-success">Approved</span>
-                                    @else
-                                        <span class="badge bg-danger">Rejected</span>
-                                    @endif
+                                    <span class="badge bg-info">No reviewers assigned</span>
                                 @endif
                             </td>
                             <td>{{ $doc->user?->firstName }} {{ $doc->user?->lastName }}</td>
                             <td style="font-size:12px">
-                                <div>{{ $doc->user?->campus ?? '—' }}</div>
+                                <div>ISPSC Tagudin</div>
                                 <div>{{ $doc->user?->college ?? '—' }}</div>
                                 <div><span class="badge bg-info" style="font-size:10px">{{ ucfirst(str_replace('_', ' ', $doc->user?->role ?? '')) }}</span></div>
                             </td>
@@ -129,6 +142,16 @@
                             <td>
                                 <a href="{{ route('documents.show', $doc) }}" class="btn btn-sm btn-outline-primary">View</a>
                                 <a href="{{ route('documents.download', $doc) }}" class="btn btn-sm btn-outline-secondary ms-1">Download</a>
+                                @if(Auth::id() === $doc->user_id)
+                                    <form action="{{ route('documents.destroy', $doc) }}" method="POST" class="d-inline ms-1" onsubmit="return confirm('Are you sure you want to delete this document?');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                @endif
+                                @if(Auth::id() === $doc->user_id || Auth::user()?->role === 'superadmin')
+                                    {{-- <a href="{{ route('documents.commenters', $doc->id) }}" class="btn btn-sm btn-secondary ms-1">Assign</a> --}}
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -138,6 +161,10 @@
             </table>
         </div>
         <div class="mt-3">{{ $documents->links() }}</div>
+                </div>
+                <div class="mt-3">{{ $documents->links() }}</div>
+        </div>
+
     </div>
-</div>
-@endsection
+
+    @endsection
